@@ -10,6 +10,10 @@ This is the repo that accompanies the course. UnderCover is a fictional travel i
 
 _If you're looking at this in VS Code or Cursor, right-click `README.md` in the Explorer on the left and choose **Open Preview** to see it formatted._
 
+## Running UnderCover
+
+After `uv sync` and `npm install`, `npm run dev` starts the backend and the dashboard at http://localhost:5173. `uv run -m agent` runs the UnderCover Agent on the waiting claims, and `npm run check` runs every check. `docs/STATUS.md` has the details.
+
 ## Key links
 
 - My curriculum of courses on Udemy: [edwarddonner.com/curriculum](https://edwarddonner.com/curriculum)

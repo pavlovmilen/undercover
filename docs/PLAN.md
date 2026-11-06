@@ -173,11 +173,11 @@ Success criteria:
 
 Success criteria:
 
-- [ ] `npm run e2e` passes, and running it twice in a row passes both times
-- [ ] Running `npm run e2e` while `npm run dev` is up leaves the development database unchanged
-- [ ] `npm run check` passes: ruff, pyright, pytest at 80%+, ESLint, Prettier, tsc, vitest at 80%+ and Playwright
-- [ ] `docs/STATUS.md` describes the pilot, how to run it (`npm run dev`, `npm run seed`, `uv run -m agent`) and what's not built yet
-- [ ] With the real model, `uv run -m agent` works through several waiting claims and the dashboard shows each one decided or waiting for sign-off (live spend, a few claims only unless you ask for the full queue)
+- [x] `npm run e2e` passes, and running it twice in a row passes both times
+- [x] Running `npm run e2e` while `npm run dev` is up leaves the development database unchanged
+- [x] `npm run check` passes: ruff, pyright, pytest at 80%+, ESLint, Prettier, tsc, vitest at 80%+ and Playwright
+- [x] `docs/STATUS.md` describes the pilot, how to run it (`npm run dev`, `npm run seed`, `uv run -m agent`) and what's not built yet
+- [x] With the real model, `uv run -m agent` works through several waiting claims and the dashboard shows each one decided or waiting for sign-off (live spend, a few claims only unless you ask for the full queue)
 
 ## Not in this build
 
