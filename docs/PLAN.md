@@ -89,20 +89,20 @@ Add `start_claim`, `add_step`, `list_steps`, `record_decision`, `pay_claim` and 
 
 Success criteria:
 
-- [ ] `start_claim` moves a waiting claim to `in_progress`
-- [ ] `add_step` stores a step, and `list_steps` returns the steps of the claim's latest thread in order
-- [ ] `record_decision` with approve and a payout of $420.00 sets the claim to `decided`; with approve and $1,250.00 it sets `awaiting_sign_off`
-- [ ] `record_decision` with decline or refer requires a payout of $0.00 and sets `decided`
-- [ ] A second `record_decision` on the same claim returns 409
-- [ ] `pay_claim` for $420.00 on a claim approved for $420.00 records the payment; paying it again returns 409
-- [ ] `pay_claim` for a different amount than the approved payout returns 409
-- [ ] `pay_claim` on a declined, referred or undecided claim returns 409
-- [ ] `pay_claim` for $1,250.00 on a claim approved for $1,250.00 returns 403 "Payment held: payouts over $1,000.00 need a handler's sign-off." and records no payment
-- [ ] `sign_off_claim` with `HND-01` on that claim records Dana Whitfield's sign-off, pays $1,250.00 and sets `decided`
-- [ ] `sign_off_claim` on a claim that isn't waiting for sign-off returns 409; with an unknown handler, 404
-- [ ] `GET /api/claims/{id}` shows the decision, the sign-off and the payment
-- [ ] The limit is read from `company.json`, not written into the code
-- [ ] `npm run check:python` passes with coverage of 80% or more
+- [x] `start_claim` moves a waiting claim to `in_progress`
+- [x] `add_step` stores a step, and `list_steps` returns the steps of the claim's latest thread in order
+- [x] `record_decision` with approve and a payout of $420.00 sets the claim to `decided`; with approve and $1,250.00 it sets `awaiting_sign_off`
+- [x] `record_decision` with decline or refer requires a payout of $0.00 and sets `decided`
+- [x] A second `record_decision` on the same claim returns 409
+- [x] `pay_claim` for $420.00 on a claim approved for $420.00 records the payment; paying it again returns 409
+- [x] `pay_claim` for a different amount than the approved payout returns 409
+- [x] `pay_claim` on a declined, referred or undecided claim returns 409
+- [x] `pay_claim` for $1,250.00 on a claim approved for $1,250.00 returns 403 "Payment held: payouts over $1,000.00 need a handler's sign-off." and records no payment
+- [x] `sign_off_claim` with `HND-01` on that claim records Dana Whitfield's sign-off, pays $1,250.00 and sets `decided`
+- [x] `sign_off_claim` on a claim that isn't waiting for sign-off returns 409; with an unknown handler, 404
+- [x] `GET /api/claims/{id}` shows the decision, the sign-off and the payment
+- [x] The limit is read from `company.json`, not written into the code
+- [x] `npm run check:python` passes with coverage of 80% or more
 
 ## Phase 3: The UnderCover Agent
 

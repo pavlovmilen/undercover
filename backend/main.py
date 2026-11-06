@@ -4,6 +4,7 @@ import json
 import sqlite3
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
 
@@ -15,10 +16,15 @@ from backend.models import (
     ClaimSummary,
     Customer,
     Decision,
+    DecisionIn,
     Handler,
     Instructions,
+    PaymentIn,
     Policy,
     PolicyWording,
+    SignOffIn,
+    Step,
+    StepIn,
 )
 
 INSTRUCTIONS = Path(__file__).parent / "instructions.md"
@@ -151,3 +157,147 @@ def list_handlers(conn: Conn) -> list[Handler]:
     """List the claims handlers."""
     rows = conn.execute("SELECT record FROM handlers ORDER BY handler_id").fetchall()
     return [Handler.model_validate_json(row["record"]) for row in rows]
+
+
+def now() -> str:
+    """Return the current time in UTC as an ISO 8601 string."""
+    return datetime.now(UTC).isoformat(timespec="seconds")
+
+
+def money(amount: float) -> str:
+    """Format an amount in US dollars, such as $1,250.00."""
+    return f"${amount:,.2f}"
+
+
+def approval_limit(conn: sqlite3.Connection) -> float:
+    """Return the payout above which a handler must sign off."""
+    row = conn.execute("SELECT record FROM company").fetchone()
+    return json.loads(row["record"])["payout_approval_limit"]
+
+
+def set_status(conn: sqlite3.Connection, claim_id: str, status: str) -> None:
+    """Move a claim to a new status."""
+    conn.execute("UPDATE claims SET status = ? WHERE claim_id = ?", [status, claim_id])
+
+
+@app.post("/api/claims/{claim_id}/start", operation_id="start_claim")
+def start_claim(claim_id: str, conn: Conn) -> Claim:
+    """Mark a claim as in progress."""
+    if load_claim(conn, claim_id).status not in ("waiting", "in_progress"):
+        raise HTTPException(409, f"Claim {claim_id} already has a decision.")
+    set_status(conn, claim_id, "in_progress")
+    return load_claim(conn, claim_id)
+
+
+@app.post("/api/claims/{claim_id}/steps", operation_id="add_step")
+def add_step(claim_id: str, step: StepIn, conn: Conn) -> Step:
+    """Record one step of the agent's work on a claim."""
+    load_claim(conn, claim_id)
+    created_at = now()
+    cursor = conn.execute(
+        """
+        INSERT INTO steps (claim_id, thread_id, kind, title, detail, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        [claim_id, step.thread_id, step.kind, step.title, step.detail, created_at],
+    )
+    return Step(id=cursor.lastrowid or 0, created_at=created_at, **step.model_dump())
+
+
+@app.get("/api/claims/{claim_id}/steps", operation_id="list_steps")
+def list_steps(claim_id: str, conn: Conn) -> list[Step]:
+    """List the steps of the agent's latest run on a claim."""
+    load_claim(conn, claim_id)
+    rows = conn.execute(
+        """
+        SELECT id, thread_id, kind, title, detail, created_at FROM steps
+        WHERE claim_id = ?1 AND thread_id = (
+            SELECT thread_id FROM steps WHERE claim_id = ?1 ORDER BY id DESC LIMIT 1
+        )
+        ORDER BY id
+        """,
+        [claim_id],
+    ).fetchall()
+    return [Step.model_validate(dict(row)) for row in rows]
+
+
+@app.post("/api/claims/{claim_id}/decision", operation_id="record_decision")
+def record_decision(claim_id: str, decision: DecisionIn, conn: Conn) -> Claim:
+    """Record the decision on a claim: approve, decline or refer."""
+    if load_claim(conn, claim_id).decision is not None:
+        raise HTTPException(409, f"Claim {claim_id} already has a decision.")
+    payout = round(decision.payout, 2)
+    conn.execute(
+        """
+        INSERT INTO decisions
+            (claim_id, decision, payout, reasons, policy_section, decided_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        [
+            claim_id,
+            decision.decision,
+            payout,
+            decision.reasons,
+            decision.policy_section,
+            now(),
+        ],
+    )
+    over_limit = decision.decision == "approve" and payout > approval_limit(conn)
+    set_status(conn, claim_id, "awaiting_sign_off" if over_limit else "decided")
+    return load_claim(conn, claim_id)
+
+
+@app.post("/api/claims/{claim_id}/payment", operation_id="pay_claim")
+def pay_claim(claim_id: str, payment: PaymentIn, conn: Conn) -> Claim:
+    """Pay an approved claim the given amount."""
+    decision = load_claim(conn, claim_id).decision
+    if decision is None or decision.decision != "approve":
+        raise HTTPException(409, f"Claim {claim_id} is not approved for payment.")
+    if decision.paid_amount is not None:
+        raise HTTPException(409, f"Claim {claim_id} is already paid.")
+    if round(payment.amount, 2) != decision.payout:
+        raise HTTPException(
+            409,
+            f"The approved payout is {money(decision.payout)}, "
+            "so the payment must be that amount.",
+        )
+    limit = approval_limit(conn)
+    if decision.payout > limit and decision.signed_off_by is None:
+        raise HTTPException(
+            403,
+            f"Payment held: payouts over {money(limit)} need a handler's sign-off.",
+        )
+    conn.execute(
+        "UPDATE decisions SET paid_amount = payout, paid_at = ? WHERE claim_id = ?",
+        [now(), claim_id],
+    )
+    return load_claim(conn, claim_id)
+
+
+@app.post("/api/claims/{claim_id}/sign-off", operation_id="sign_off_claim")
+def sign_off_claim(claim_id: str, sign_off: SignOffIn, conn: Conn) -> Claim:
+    """Sign off a claim's payout as a handler, which pays it."""
+    row = found(
+        conn.execute(
+            "SELECT record FROM handlers WHERE handler_id = ?", [sign_off.handler_id]
+        ).fetchone(),
+        f"handler {sign_off.handler_id}",
+    )
+    handler = Handler.model_validate_json(row["record"])
+    if load_claim(conn, claim_id).status != "awaiting_sign_off":
+        raise HTTPException(409, f"Claim {claim_id} is not waiting for sign-off.")
+    if not handler.can_approve_over_limit:
+        raise HTTPException(
+            403, f"{handler.name} cannot sign off payouts over the limit."
+        )
+    signed_at = now()
+    conn.execute(
+        """
+        UPDATE decisions
+        SET signed_off_by = ?, signed_off_at = ?, paid_amount = payout, paid_at = ?
+        WHERE claim_id = ?
+        """,
+        [handler.name, signed_at, signed_at, claim_id],
+    )
+    set_status(conn, claim_id, "decided")
+    return load_claim(conn, claim_id)

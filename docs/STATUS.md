@@ -4,7 +4,7 @@ The claims pilot from `docs/PLAN.md`, in progress.
 
 ## Built
 
-- `backend/`: FastAPI and SQLite. The database (`backend/undercover.db`, or the path in `UNDERCOVER_DB`) is created from `data/` on first start, never from `data/evals/`. Read operations for the queue, claims, policies, customers, the policy wording, the agent's instructions (`backend/instructions.md`) and the handlers.
+- `backend/`: FastAPI and SQLite. The database (`backend/undercover.db`, or the path in `UNDERCOVER_DB`) is created from `data/` on first start, never from `data/evals/`. Read operations for the queue, claims, policies, customers, the policy wording, the agent's instructions (`backend/instructions.md`) and the handlers. Write operations for the agent's steps, its decision and the payment, and a handler's sign-off. A payout over the limit in `company.json` ($1,000.00) is held until a handler signs off, and the backend refuses the payment until then.
 - `agent/`: the skeleton's entry point `run(claim_id, thread_id)`, with one tool that calls the health route
 - `dashboard/`: one page that shows whether the backend is up
 - `e2e/`: one test of that page
