@@ -153,12 +153,12 @@ Success criteria:
 
 Success criteria:
 
-- [ ] vitest tests cover the claim page in each status, the activity list, the run button, the sign-off form and the instructions page
-- [ ] `npm run check:ts` passes with coverage of 80% or more
-- [ ] In the browser, CLM-1001 shows its story, its items totaling $420.00, its documents, the Premium policy and Maya Patel's earlier claim
-- [ ] In the browser, the instructions page shows the text of `backend/instructions.md` with no way to edit it
-- [ ] In the browser, clicking "Run the agent" on a waiting claim with the real model shows the steps appearing, then the decision with its reasons and policy section, and the queue's counts update (one live claim)
-- [ ] In the browser, a claim approved over $1,000 shows "Waiting for sign-off", and signing off as Dana Whitfield shows it paid and decided
+- [x] vitest tests cover the claim page in each status, the activity list, the run button, the sign-off form and the instructions page
+- [x] `npm run check:ts` passes with coverage of 80% or more
+- [x] In the browser, CLM-1001 shows its story, its items totaling $420.00, its documents, the Premium policy and Maya Patel's earlier claim
+- [x] In the browser, the instructions page shows the text of `backend/instructions.md` with no way to edit it
+- [x] In the browser, clicking "Run the agent" on a waiting claim with the real model shows the steps appearing, then the decision with its reasons and policy section, and the queue's counts update (one live claim)
+- [x] In the browser, a claim approved over $1,000 shows "Waiting for sign-off", and signing off as Dana Whitfield shows it paid and decided
 
 ## Phase 6: End-to-end tests and handover
 

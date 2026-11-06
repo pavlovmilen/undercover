@@ -1,7 +1,15 @@
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { App } from "./App";
-import { mockApi } from "./testing";
+import { claim, mockApi } from "./testing";
+
+async function go(hash: string) {
+  await act(async () => {
+    window.location.hash = hash;
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+    await Promise.resolve();
+  });
+}
 
 afterEach(() => {
   cleanup();
@@ -22,21 +30,32 @@ it("shows that the backend is down", async () => {
 });
 
 it("opens the page in the address", async () => {
-  mockApi({ "GET /api/health": { status: "ok" }, "GET /api/claims": [] });
+  mockApi({
+    "GET /api/health": { status: "ok" },
+    "GET /api/claims": [],
+    "GET /api/claims/CLM-1001": claim(),
+    "GET /api/claims/CLM-1001/steps": [],
+    "GET /api/instructions": { instructions: "Decide claims." },
+  });
   vi.stubGlobal("scrollTo", vi.fn());
   render(<App />);
   expect(
     await screen.findByRole("heading", { name: "Claims queue" }),
   ).toBeDefined();
-  await act(async () => {
-    window.location.hash = "#/claims/CLM-1001";
-    window.dispatchEvent(new HashChangeEvent("hashchange"));
-    await Promise.resolve();
-  });
-  expect(screen.getByRole("heading", { level: 1 }).textContent).toContain(
-    "CLM-1001",
-  );
+  await go("#/claims/CLM-1001");
+  expect(
+    await screen.findByRole("heading", {
+      name: "Flight home canceled by the airline",
+    }),
+  ).toBeDefined();
   expect(
     screen.getByRole("link", { name: "Queue" }).getAttribute("aria-current"),
+  ).toBe("page");
+  await go("#/instructions");
+  expect(await screen.findByText("Decide claims.")).toBeDefined();
+  expect(
+    screen
+      .getByRole("link", { name: "Agent instructions" })
+      .getAttribute("aria-current"),
   ).toBe("page");
 });

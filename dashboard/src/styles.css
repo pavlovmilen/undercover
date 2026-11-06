@@ -364,3 +364,244 @@ select {
     transition: none !important;
   }
 }
+
+/* The claim page */
+.claim-head {
+  margin-top: 12px;
+}
+
+.claim-head h1 {
+  max-width: 28ch;
+}
+
+.claim-head p {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+}
+
+.facts.summary-facts {
+  margin-bottom: 24px;
+}
+
+.claim-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.stack {
+  display: grid;
+  gap: 20px;
+}
+
+.stack h2 {
+  margin-bottom: 12px;
+}
+
+h3 {
+  font-size: 1rem;
+  margin: 24px 0 8px;
+}
+
+blockquote {
+  margin: 0 0 20px;
+  font-family: var(--serif);
+  font-size: 1.3rem;
+  line-height: 1.45;
+  max-width: 60ch;
+}
+
+.items td,
+.items th {
+  padding: 6px 8px;
+}
+
+.items tfoot th,
+.items tfoot td {
+  color: var(--ink);
+  font-weight: 600;
+  padding-top: 10px;
+}
+
+.documents,
+.history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.documents li,
+.history li {
+  background: var(--quiet);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.documents p {
+  margin: 4px 0 0;
+  font-size: 0.92rem;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px 24px;
+  margin: 0;
+}
+
+.facts dt {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.facts dd {
+  margin: 0;
+}
+
+.decision-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.decision-head h2 {
+  margin: 0;
+}
+
+.payout {
+  font-size: 2.2rem;
+  font-weight: 600;
+  margin: 4px 0 8px;
+}
+
+.payment {
+  margin: 20px 0 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--sea-green) 18%, var(--panel));
+  font-weight: 600;
+}
+
+.payment.held {
+  background: color-mix(in srgb, var(--coral) 24%, var(--panel));
+}
+
+.sign-off {
+  margin-top: 16px;
+}
+
+.sign-off label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.sign-off-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* The agent's activity: a numbered timeline */
+.activity {
+  list-style: none;
+  counter-reset: step;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.activity li {
+  counter-increment: step;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.activity li::before {
+  content: counter(step);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font: 600 0.72rem var(--mono);
+  background: var(--quiet);
+}
+
+.activity .done::before {
+  background: var(--sea-green);
+  color: var(--midnight);
+}
+
+.activity .working::before {
+  background: var(--marigold);
+  color: var(--midnight);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.activity .refused::before {
+  background: var(--coral);
+  color: var(--midnight);
+}
+
+.activity .note {
+  font-family: var(--serif);
+  font-size: 1.1rem;
+  line-height: 1.4;
+}
+
+.activity summary {
+  cursor: pointer;
+  padding: 1px 0;
+}
+
+.activity pre {
+  font: 0.78rem/1.45 var(--mono);
+  background: var(--quiet);
+  border-radius: 8px;
+  padding: 10px;
+  margin: 6px 0;
+  max-height: 220px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* The instructions page */
+.instructions {
+  white-space: pre-wrap;
+  max-width: 80ch;
+  line-height: 1.6;
+}
+
+@media (max-width: 900px) {
+  .claim-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .claim-grid > .stack:last-child {
+    order: -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .activity .working::before {
+    animation: none;
+  }
+}

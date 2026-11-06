@@ -1,4 +1,6 @@
 import { api } from "./api";
+import { ClaimPage } from "./ClaimPage";
+import { Instructions } from "./Instructions";
 import { useLoad } from "./load";
 import { Queue } from "./Queue";
 import { useRoute, type Route } from "./route";
@@ -6,9 +8,9 @@ import { useRoute, type Route } from "./route";
 function Page({ route }: Readonly<{ route: Route }>) {
   switch (route.page) {
     case "claim":
-      return <h1 className="mono">{route.claimId}</h1>;
+      return <ClaimPage key={route.claimId} claimId={route.claimId} />;
     case "instructions":
-      return <h1>Agent instructions</h1>;
+      return <Instructions />;
     default:
       return <Queue />;
   }
