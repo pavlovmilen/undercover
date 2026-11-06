@@ -138,11 +138,11 @@ Replace the hello-world page with the dashboard's frame and the queue.
 
 Success criteria:
 
-- [ ] vitest tests cover the queue table, the status counts, the money format and the router
-- [ ] `npm run check:ts` passes with coverage of 80% or more, strict TypeScript and no `any`
-- [ ] In the browser, `http://localhost:5173` shows the queue with 25 waiting claims and "Waiting 25"
-- [ ] The page uses the brand fonts and colors in light mode and in dark mode (checked with a screenshot of each)
-- [ ] Clicking CLM-1001 goes to `#/claims/CLM-1001`
+- [x] vitest tests cover the queue table, the status counts, the money format and the router
+- [x] `npm run check:ts` passes with coverage of 80% or more, strict TypeScript and no `any`
+- [x] In the browser, `http://localhost:5173` shows the queue with 25 waiting claims and "Waiting 25"
+- [x] The page uses the brand fonts and colors in light mode and in dark mode (checked with a screenshot of each)
+- [x] Clicking CLM-1001 goes to `#/claims/CLM-1001`
 
 ## Phase 5: The claim page and the instructions page
 
