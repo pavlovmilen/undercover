@@ -109,7 +109,7 @@ Success criteria:
 
 Rewrite `agent/main.py` around the claim workflow:
 
-- **Tools:** `get_claim`, `get_policy`, `get_customer`, `get_policy_wording`, `record_decision` (decision, payout, reasons, policy section) and `pay_claim` (amount). Each calls one API operation. A refusal from the backend comes back to the model as text, so it learns that the payment is held rather than crashing.
+- **Tools:** `get_claim`, `get_policy`, `get_customer`, `get_policy_wording`, `record_decision` (decision, payout, reasons, policy section) and `pay_claim` (amount). Each calls one API operation. The tools are built for each run and tied to its claim, so they take no ids and can't reach another claim (changed during the build, after a security review). A refusal from the backend comes back to the model as text, so it learns that the payment is held rather than crashing.
 - **Instructions:** `backend/instructions.md` tells the agent to read the claim, the policy, the customer's history and the wording; decide from the policy wording alone; work out the payout using the plan's limits, the deductible and anything already paid by a carrier; record the decision with two or three sentences of reasons and the section of the wording, such as "Section 3, Trip Delay"; and then pay an approved claim. `run()` fetches them from `get_instructions`.
 - **Harness:** `run(claim_id, thread_id)` calls `start_claim`, then streams the agent and posts each model message, tool call and tool result as a step. It returns the agent's final reply.
 - **Command line:** `uv run -m agent` works through every waiting claim one at a time; `uv run -m agent CLM-1001` runs one.

@@ -33,21 +33,20 @@ def read_the_claim():
     return AIMessage(
         content="I will read the claim first.",
         tool_calls=[
-            call("get_claim", claim_id="CLM-1001"),
-            call("get_policy", policy_id="POL-2001"),
-            call("get_customer", customer_id="CUS-3001"),
+            call("get_claim"),
+            call("get_policy"),
+            call("get_customer"),
             call("get_policy_wording"),
         ],
     )
 
 
-def decide(decision, payout, claim_id="CLM-1001"):
+def decide(decision, payout):
     return AIMessage(
         content="",
         tool_calls=[
             call(
                 "record_decision",
-                claim_id=claim_id,
                 decision=decision,
                 payout=payout,
                 reasons="The flight was canceled for a crew problem.",
@@ -57,10 +56,8 @@ def decide(decision, payout, claim_id="CLM-1001"):
     )
 
 
-def pay(amount, claim_id="CLM-1001"):
-    return AIMessage(
-        content="", tool_calls=[call("pay_claim", claim_id=claim_id, amount=amount)]
-    )
+def pay(amount):
+    return AIMessage(content="", tool_calls=[call("pay_claim", amount=amount)])
 
 
 def steps(claim_id="CLM-1001"):
@@ -98,7 +95,8 @@ def test_approve_and_pay(monkeypatch):
         ("tool_result", "pay_claim"),
         ("message", "agent"),
     ]
-    assert json.loads(recorded[1]["detail"]) == {"claim_id": "CLM-1001"}
+    assert json.loads(recorded[1]["detail"]) == {}
+    assert "POL-2001" in results["get_policy"]["detail"]
     assert "Maya Patel" in results["get_customer"]["detail"]
     assert results["get_policy_wording"]["detail"].startswith("# UnderCover Travel")
 
@@ -106,8 +104,8 @@ def test_approve_and_pay(monkeypatch):
 def test_payment_over_the_limit_is_held(monkeypatch):
     monkeypatch.setattr(main, "backend", lambda: TestClient(app))
     llm = stub(
-        decide("approve", 1250.0, "CLM-1003"),
-        pay(1250.0, "CLM-1003"),
+        decide("approve", 1250.0),
+        pay(1250.0),
         AIMessage(content="Approved $1,250.00, waiting for sign-off."),
     )
     main.run("CLM-1003", "thread-1", llm)
@@ -194,3 +192,9 @@ def test_model_name(monkeypatch):
     assert main.model().reasoning_effort == "low"
     monkeypatch.setenv("MODEL_NAME", "openrouter/free")
     assert main.model().model_name == "openrouter/free"
+
+
+def test_tools_only_reach_their_own_claim():
+    claim = {"claim_id": "CLM-1003", "policy_id": "POL-2003", "customer_id": "CUS-3003"}
+    for t in main.tools_for(claim):
+        assert not {"claim_id", "policy_id", "customer_id"} & set(t.args)

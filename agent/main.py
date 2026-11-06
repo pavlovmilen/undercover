@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 from langchain.agents import create_agent
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
-from langchain_core.tools import tool
+from langchain_core.tools import BaseTool, tool
 from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
 
@@ -48,64 +48,63 @@ def post(path: str, body: dict[str, Any]) -> str:
 
 
 @tool
-def get_claim(claim_id: str) -> str:
-    """Get a claim: the customer's story, the items claimed and the documents."""
-    return get(f"/api/claims/{claim_id}")
-
-
-@tool
-def get_policy(policy_id: str) -> str:
-    """Get a policy: the plan, the add-ons, the trip and the travelers."""
-    return get(f"/api/policies/{policy_id}")
-
-
-@tool
-def get_customer(customer_id: str) -> str:
-    """Get a customer with their earlier claims."""
-    return get(f"/api/customers/{customer_id}")
-
-
-@tool
 def get_policy_wording() -> str:
     """Get the policy wording, which every decision must follow."""
     return json.loads(get("/api/policy-wording"))["wording"]
 
 
-@tool
-def record_decision(
-    claim_id: str,
-    decision: Literal["approve", "decline", "refer"],
-    payout: float,
-    reasons: str,
-    policy_section: str,
-) -> str:
-    """Record the decision on a claim, with the payout in US dollars ($0.00 unless
-    approved), two or three sentences of reasons and the section of the wording."""
-    return post(
-        f"/api/claims/{claim_id}/decision",
-        {
-            "decision": decision,
-            "payout": payout,
-            "reasons": reasons,
-            "policy_section": policy_section,
-        },
-    )
+def tools_for(claim: dict[str, Any]) -> list[BaseTool]:
+    """Return the agent's tools, each tied to the one claim it is deciding."""
+    claim_id = claim["claim_id"]
 
+    @tool
+    def get_claim() -> str:
+        """Get the claim: the customer's story, the items claimed and the documents."""
+        return get(f"/api/claims/{claim_id}")
 
-@tool
-def pay_claim(claim_id: str, amount: float) -> str:
-    """Pay an approved claim its payout in US dollars."""
-    return post(f"/api/claims/{claim_id}/payment", {"amount": amount})
+    @tool
+    def get_policy() -> str:
+        """Get the claim's policy: the plan, the add-ons, the trip and the travelers."""
+        return get(f"/api/policies/{claim['policy_id']}")
 
+    @tool
+    def get_customer() -> str:
+        """Get the customer who made the claim, with their earlier claims."""
+        return get(f"/api/customers/{claim['customer_id']}")
 
-TOOLS = [
-    get_claim,
-    get_policy,
-    get_customer,
-    get_policy_wording,
-    record_decision,
-    pay_claim,
-]
+    @tool
+    def record_decision(
+        decision: Literal["approve", "decline", "refer"],
+        payout: float,
+        reasons: str,
+        policy_section: str,
+    ) -> str:
+        """Record the decision on the claim, with the payout in US dollars ($0.00
+        unless approved), two or three sentences of reasons and the section of the
+        wording."""
+        return post(
+            f"/api/claims/{claim_id}/decision",
+            {
+                "decision": decision,
+                "payout": payout,
+                "reasons": reasons,
+                "policy_section": policy_section,
+            },
+        )
+
+    @tool
+    def pay_claim(amount: float) -> str:
+        """Pay the approved claim its payout in US dollars."""
+        return post(f"/api/claims/{claim_id}/payment", {"amount": amount})
+
+    return [
+        get_claim,
+        get_policy,
+        get_customer,
+        get_policy_wording,
+        record_decision,
+        pay_claim,
+    ]
 
 
 def model() -> ChatOpenAI:
@@ -150,9 +149,11 @@ def messages(updates: Iterator[dict[str, Any]]) -> Iterator[BaseMessage]:
 def run(claim_id: str, thread_id: str, llm: BaseChatModel | None = None) -> str:
     """Run the agent on one claim, recording each step, and return its reply."""
     with backend() as client:
-        client.post(f"/api/claims/{claim_id}/start").raise_for_status()
+        claim = client.post(f"/api/claims/{claim_id}/start").raise_for_status().json()
         instructions = client.get("/api/instructions").json()["instructions"]
-    agent = create_agent(llm or model(), tools=TOOLS, system_prompt=instructions)
+    agent = create_agent(
+        llm or model(), tools=tools_for(claim), system_prompt=instructions
+    )
     updates = agent.stream(
         {"messages": [{"role": "user", "content": f"Please decide claim {claim_id}."}]},
         config={"configurable": {"thread_id": thread_id}},
