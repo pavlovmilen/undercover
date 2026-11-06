@@ -93,6 +93,7 @@ Success criteria:
 - [x] `add_step` stores a step, and `list_steps` returns the steps of the claim's latest thread in order
 - [x] `record_decision` with approve and a payout of $420.00 sets the claim to `decided`; with approve and $1,250.00 it sets `awaiting_sign_off`
 - [x] `record_decision` with decline or refer requires a payout of $0.00 and sets `decided`
+- [x] `record_decision` refuses a payout above the amount claimed (added during the build, after a security review)
 - [x] A second `record_decision` on the same claim returns 409
 - [x] `pay_claim` for $420.00 on a claim approved for $420.00 records the payment; paying it again returns 409
 - [x] `pay_claim` for a different amount than the approved payout returns 409
@@ -116,15 +117,15 @@ Rewrite `agent/main.py` around the claim workflow:
 
 Success criteria:
 
-- [ ] A stub-model test drives the full flow on CLM-1001: the agent reads the claim, policy, customer and wording, approves $420.00, pays it, and the claim is `decided` and paid
-- [ ] A stub-model test approves a claim for $1,250.00 and tries to pay it: the tool returns the backend's refusal, no payment is recorded, and the claim is `awaiting_sign_off`
-- [ ] A stub-model test declines a claim with a $0.00 payout and a policy section
-- [ ] Each run records its steps against its thread id, in order, including the tool calls and their results
-- [ ] The agent gets its instructions from `GET /api/instructions` (a test changes them in the backend and sees the change in the model's system message)
-- [ ] `run_agent` returns a thread id and calls `run()` in the background (tested with `run()` replaced)
-- [ ] `MODEL_NAME` still chooses the model, with `openai/gpt-6-luna` at low reasoning effort by default
-- [ ] With the backend running and the real model, `uv run -m agent CLM-1001` records a decision with reasons and a policy section, and its steps appear at `GET /api/claims/CLM-1001/steps` (one live claim, a few cents of spend)
-- [ ] `npm run check:python` passes with coverage of 80% or more
+- [x] A stub-model test drives the full flow on CLM-1001: the agent reads the claim, policy, customer and wording, approves $420.00, pays it, and the claim is `decided` and paid
+- [x] A stub-model test approves a claim for $1,250.00 and tries to pay it: the tool returns the backend's refusal, no payment is recorded, and the claim is `awaiting_sign_off`
+- [x] A stub-model test declines a claim with a $0.00 payout and a policy section
+- [x] Each run records its steps against its thread id, in order, including the tool calls and their results
+- [x] The agent gets its instructions from `GET /api/instructions` (a test changes them in the backend and sees the change in the model's system message)
+- [x] `run_agent` returns a thread id and calls `run()` in the background (tested with `run()` replaced)
+- [x] `MODEL_NAME` still chooses the model, with `openai/gpt-6-luna` at low reasoning effort by default
+- [x] With the backend running and the real model, `uv run -m agent CLM-1001` records a decision with reasons and a policy section, and its steps appear at `GET /api/claims/CLM-1001/steps` (one live claim, a few cents of spend)
+- [x] `npm run check:python` passes with coverage of 80% or more
 
 ## Phase 4: The dashboard foundation and the queue
 

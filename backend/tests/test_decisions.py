@@ -71,11 +71,11 @@ def test_approve_under_the_limit_is_decided():
 
 
 def test_approve_over_the_limit_waits_for_sign_off():
-    assert decide("CLM-1001", payout=1250.0).json()["status"] == "awaiting_sign_off"
+    assert decide("CLM-1003", payout=1250.0).json()["status"] == "awaiting_sign_off"
 
 
 def test_approve_at_the_limit_is_decided():
-    assert decide("CLM-1001", payout=1000.0).json()["status"] == "decided"
+    assert decide("CLM-1003", payout=1000.0).json()["status"] == "decided"
 
 
 @pytest.mark.parametrize("decision", ["decline", "refer"])
@@ -139,23 +139,23 @@ def test_pay_a_claim_that_is_not_approved_is_refused(decision):
 
 
 def test_pay_over_the_limit_is_held_for_sign_off():
-    decide("CLM-1001", payout=1250.0)
-    response = pay("CLM-1001", 1250.0)
+    decide("CLM-1003", payout=1250.0)
+    response = pay("CLM-1003", 1250.0)
     assert response.status_code == 403
     assert response.json()["detail"] == HELD
-    claim = client.get("/api/claims/CLM-1001").json()
+    claim = client.get("/api/claims/CLM-1003").json()
     assert claim["decision"]["paid_amount"] is None
     assert claim["status"] == "awaiting_sign_off"
 
 
 def test_sign_off_pays_the_claim():
-    decide("CLM-1001", payout=1250.0)
-    claim = sign_off("CLM-1001").json()
+    decide("CLM-1003", payout=1250.0)
+    claim = sign_off("CLM-1003").json()
     assert claim["status"] == "decided"
     assert claim["decision"]["signed_off_by"] == "Dana Whitfield"
     assert claim["decision"]["signed_off_at"]
     assert claim["decision"]["paid_amount"] == 1250.0
-    assert pay("CLM-1001", 1250.0).status_code == 409
+    assert pay("CLM-1003", 1250.0).status_code == 409
 
 
 def test_sign_off_a_claim_that_is_not_waiting_is_refused():
@@ -166,8 +166,8 @@ def test_sign_off_a_claim_that_is_not_waiting_is_refused():
 
 
 def test_sign_off_by_an_unknown_handler_is_404():
-    decide("CLM-1001", payout=1250.0)
-    assert sign_off("CLM-1001", "HND-99").status_code == 404
+    decide("CLM-1003", payout=1250.0)
+    assert sign_off("CLM-1003", "HND-99").status_code == 404
 
 
 def test_sign_off_needs_a_handler_who_can_approve(database):
@@ -182,10 +182,10 @@ def test_sign_off_needs_a_handler_who_can_approve(database):
     with conn:
         conn.execute("INSERT INTO handlers VALUES ('HND-04', ?)", [json.dumps(record)])
     conn.close()
-    decide("CLM-1001", payout=1250.0)
-    response = sign_off("CLM-1001", "HND-04")
+    decide("CLM-1003", payout=1250.0)
+    response = sign_off("CLM-1003", "HND-04")
     assert response.status_code == 403
-    assert client.get("/api/claims/CLM-1001").json()["status"] == "awaiting_sign_off"
+    assert client.get("/api/claims/CLM-1003").json()["status"] == "awaiting_sign_off"
 
 
 def test_the_limit_comes_from_the_company_record(database):
@@ -196,14 +196,23 @@ def test_the_limit_comes_from_the_company_record(database):
             "SET record = json_set(record, '$.payout_approval_limit', 2000)"
         )
     conn.close()
-    assert decide("CLM-1001", payout=1250.0).json()["status"] == "decided"
-    assert pay("CLM-1001", 1250.0).status_code == 200
+    assert decide("CLM-1003", payout=1250.0).json()["status"] == "decided"
+    assert pay("CLM-1003", 1250.0).status_code == 200
 
 
 def test_the_queue_shows_decisions():
-    decide("CLM-1001", payout=1250.0)
+    decide("CLM-1003", payout=1250.0)
     claims = client.get("/api/claims").json()
-    claim = next(c for c in claims if c["claim_id"] == "CLM-1001")
+    claim = next(c for c in claims if c["claim_id"] == "CLM-1003")
     assert claim["status"] == "awaiting_sign_off"
     assert claim["decision"] == "approve"
     assert claim["payout"] == 1250.0
+
+
+def test_payout_above_the_amount_claimed_is_refused():
+    response = decide("CLM-1001", payout=420.01)
+    assert response.status_code == 409
+    assert response.json()["detail"] == (
+        "The payout can't be more than the $420.00 claimed."
+    )
+    assert client.get("/api/claims/CLM-1001").json()["decision"] is None

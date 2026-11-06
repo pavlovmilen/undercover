@@ -2,14 +2,16 @@
 
 import json
 import sqlite3
+import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
 
+from agent import main as agent
 from backend import db
 from backend.models import (
     Claim,
@@ -22,6 +24,7 @@ from backend.models import (
     PaymentIn,
     Policy,
     PolicyWording,
+    Run,
     SignOffIn,
     Step,
     StepIn,
@@ -180,11 +183,16 @@ def set_status(conn: sqlite3.Connection, claim_id: str, status: str) -> None:
     conn.execute("UPDATE claims SET status = ? WHERE claim_id = ?", [status, claim_id])
 
 
+def check_open(conn: sqlite3.Connection, claim_id: str) -> None:
+    """Raise a 409 unless the claim is waiting or in progress."""
+    if load_claim(conn, claim_id).status not in ("waiting", "in_progress"):
+        raise HTTPException(409, f"Claim {claim_id} already has a decision.")
+
+
 @app.post("/api/claims/{claim_id}/start", operation_id="start_claim")
 def start_claim(claim_id: str, conn: Conn) -> Claim:
     """Mark a claim as in progress."""
-    if load_claim(conn, claim_id).status not in ("waiting", "in_progress"):
-        raise HTTPException(409, f"Claim {claim_id} already has a decision.")
+    check_open(conn, claim_id)
     set_status(conn, claim_id, "in_progress")
     return load_claim(conn, claim_id)
 
@@ -224,9 +232,15 @@ def list_steps(claim_id: str, conn: Conn) -> list[Step]:
 @app.post("/api/claims/{claim_id}/decision", operation_id="record_decision")
 def record_decision(claim_id: str, decision: DecisionIn, conn: Conn) -> Claim:
     """Record the decision on a claim: approve, decline or refer."""
-    if load_claim(conn, claim_id).decision is not None:
+    claim = load_claim(conn, claim_id)
+    if claim.decision is not None:
         raise HTTPException(409, f"Claim {claim_id} already has a decision.")
     payout = round(decision.payout, 2)
+    if payout > claim.amount_claimed:
+        raise HTTPException(
+            409,
+            f"The payout can't be more than the {money(claim.amount_claimed)} claimed.",
+        )
     conn.execute(
         """
         INSERT INTO decisions
@@ -301,3 +315,12 @@ def sign_off_claim(claim_id: str, sign_off: SignOffIn, conn: Conn) -> Claim:
     )
     set_status(conn, claim_id, "decided")
     return load_claim(conn, claim_id)
+
+
+@app.post("/api/claims/{claim_id}/run", operation_id="run_agent")
+def run_agent(claim_id: str, background: BackgroundTasks, conn: Conn) -> Run:
+    """Start the UnderCover Agent on a claim in the background."""
+    check_open(conn, claim_id)
+    thread_id = str(uuid.uuid4())
+    background.add_task(agent.run, claim_id, thread_id)
+    return Run(thread_id=thread_id)
